@@ -1,0 +1,15 @@
+# FastAPI Server
+fastapi
+uvicorn
+python-dotenv
+
+# Web Crawling
+requests
+beautifulsoup4
+
+# LangChain RAG
+langchain-core
+langchain-openai
+langchain-chroma
+langchain-community
+langchain-text-splitters
