@@ -1,1 +1,1 @@
-# rag-chatbot-app-virat
+# rag-chatbot-app
