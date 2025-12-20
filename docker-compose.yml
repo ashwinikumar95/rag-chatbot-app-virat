@@ -1,0 +1,30 @@
+# docker-compose.yml - Easy deployment for RAG Chatbot
+version: '3.8'
+
+services:
+  rag-chatbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-chatbot
+    ports:
+      - "3000:3000"
+    environment:
+      # Required: Set your OpenAI API key
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Optional: Override default model
+      # - OPENAI_MODEL=gpt-4
+    volumes:
+      # Persist ChromaDB data between container restarts
+      - chroma_data:/app/chroma_db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  chroma_data:
+    driver: local
