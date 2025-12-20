@@ -6,7 +6,8 @@ from .logger import (
     get_ingestion_logger,
     get_rag_logger
 )
-from .validators import validate_url, URLValidationError
+from .validators import validate_url, validate_session_id, URLValidationError
+from .rate_limiter import check_rate_limit
 
 __all__ = [
     "setup_logger",
@@ -15,5 +16,7 @@ __all__ = [
     "get_ingestion_logger",
     "get_rag_logger",
     "validate_url",
-    "URLValidationError"
+    "validate_session_id",
+    "URLValidationError",
+    "check_rate_limit",
 ]

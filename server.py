@@ -2,7 +2,6 @@
 import os
 import time
 import tempfile
-import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +17,17 @@ from ingestion.chunker import create_chunks
 from ingestion.embedder import embed_and_store, get_vectorstore, collection_exists, delete_collection
 from utils.validators import validate_url, validate_session_id, URLValidationError
 from utils.logger import get_server_logger, get_rag_logger, get_ingestion_logger
+from utils.rate_limiter import check_rate_limit
+
+# Import centralized config
+from config import (
+    MAX_QUESTION_LENGTH,
+    MAX_FILE_SIZE_BYTES,
+    MAX_CHAT_HISTORY_MESSAGES,
+    RETRIEVER_TOP_K,
+    RATE_LIMIT_REQUESTS,
+    RATE_LIMIT_WINDOW_SECONDS,
+)
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -117,8 +127,8 @@ class AskRequest(BaseModel):
     def validate_question(cls, v):
         if not v or not v.strip():
             raise ValueError("Question cannot be empty")
-        if len(v) > 2000:
-            raise ValueError("Question exceeds maximum length (2000 characters)")
+        if len(v) > MAX_QUESTION_LENGTH:
+            raise ValueError(f"Question exceeds maximum length ({MAX_QUESTION_LENGTH} characters)")
         return v.strip()
     
     @field_validator('session_id')
@@ -170,7 +180,7 @@ def initialize_rag_chain(session_id: str):
     start_time = time.time()
     
     vectorstore = get_vectorstore(collection_name=session_id)
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+    retriever = vectorstore.as_retriever(search_kwargs={"k": RETRIEVER_TOP_K})
     model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     
     # Updated prompt with chat history support
@@ -202,7 +212,7 @@ Context:
 
 # --- Memory-Enabled LangGraph RAG App ---
 
-MAX_HISTORY_MESSAGES = 10  # Sliding window: keep last N messages
+# Use config value for sliding window
 
 
 def create_rag_graph(session_id: str):
@@ -213,7 +223,7 @@ def create_rag_graph(session_id: str):
     start_time = time.time()
     
     vectorstore = get_vectorstore(collection_name=session_id)
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+    retriever = vectorstore.as_retriever(search_kwargs={"k": RETRIEVER_TOP_K})
     model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
     
     def format_docs(docs):
@@ -236,7 +246,7 @@ def create_rag_graph(session_id: str):
         chat_history = state.get("chat_history", [])
         
         # Apply sliding window to chat history
-        trimmed_history = chat_history[-MAX_HISTORY_MESSAGES:] if len(chat_history) > MAX_HISTORY_MESSAGES else chat_history
+        trimmed_history = chat_history[-MAX_CHAT_HISTORY_MESSAGES:] if len(chat_history) > MAX_CHAT_HISTORY_MESSAGES else chat_history
         
         # Build prompt with history
         prompt = ChatPromptTemplate.from_messages([
@@ -330,9 +340,50 @@ async def health():
     }
 
 
+@app.get("/limits")
+async def get_limits():
+    """Get current API limits and configuration."""
+    from config import (
+        MAX_QUESTION_LENGTH, MAX_URL_LENGTH, MAX_SESSION_ID_LENGTH,
+        MAX_FILE_SIZE_MB, SUPPORTED_FILE_EXTENSIONS,
+        MAX_CRAWL_DEPTH, MAX_PAGES_PER_CRAWL,
+        RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SECONDS,
+        MAX_CHAT_HISTORY_MESSAGES, RETRIEVER_TOP_K,
+        CHUNK_SIZE, CHUNK_OVERLAP
+    )
+    return {
+        "input_limits": {
+            "max_question_length": MAX_QUESTION_LENGTH,
+            "max_url_length": MAX_URL_LENGTH,
+            "max_session_id_length": MAX_SESSION_ID_LENGTH,
+        },
+        "file_limits": {
+            "max_file_size_mb": MAX_FILE_SIZE_MB,
+            "supported_extensions": list(SUPPORTED_FILE_EXTENSIONS),
+        },
+        "crawl_limits": {
+            "max_depth": MAX_CRAWL_DEPTH,
+            "max_pages": MAX_PAGES_PER_CRAWL,
+        },
+        "rate_limits": {
+            "requests_per_window": RATE_LIMIT_REQUESTS,
+            "window_seconds": RATE_LIMIT_WINDOW_SECONDS,
+        },
+        "rag_settings": {
+            "max_chat_history": MAX_CHAT_HISTORY_MESSAGES,
+            "retriever_top_k": RETRIEVER_TOP_K,
+            "chunk_size": CHUNK_SIZE,
+            "chunk_overlap": CHUNK_OVERLAP,
+        }
+    }
+
+
 @app.post("/crawl", response_model=CrawlResponse)
-async def crawl(request: CrawlRequest):
+async def crawl(request: CrawlRequest, req: Request):
     """Crawl a website and ingest content into the vector store for a session."""
+    # Rate limiting
+    check_rate_limit(req, RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SECONDS)
+    
     session_id = request.session_id
     start_time = time.time()
     
@@ -420,8 +471,11 @@ async def crawl(request: CrawlRequest):
 
 
 @app.post("/ask", response_model=AskResponse)
-async def ask(request: AskRequest):
+async def ask(request: AskRequest, req: Request):
     """Answer a question using the memory-enabled LangGraph RAG app."""
+    # Rate limiting
+    check_rate_limit(req, RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SECONDS)
+    
     session_id = request.session_id
     start_time = time.time()
     
@@ -467,10 +521,14 @@ async def ask(request: AskRequest):
 
 @app.post("/ingest/file", response_model=FileIngestResponse)
 async def ingest_file(
+    req: Request,
     file: UploadFile = File(...),
     session_id: str = Form(...)
 ):
     """Ingest a file (PDF, TXT, DOCX) into the vector store for a session."""
+    # Rate limiting
+    check_rate_limit(req, RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW_SECONDS)
+    
     start_time = time.time()
     
     # Validate session_id
@@ -498,9 +556,9 @@ async def ingest_file(
         with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
             content = await file.read()
             
-            # Validate file size (max 10MB)
-            if len(content) > 10 * 1024 * 1024:
-                raise HTTPException(status_code=400, detail="File size exceeds 10MB limit")
+            # Validate file size
+            if len(content) > MAX_FILE_SIZE_BYTES:
+                raise HTTPException(status_code=400, detail=f"File size exceeds {MAX_FILE_SIZE_BYTES // (1024*1024)}MB limit")
             
             # Check for empty file
             if len(content) == 0:
