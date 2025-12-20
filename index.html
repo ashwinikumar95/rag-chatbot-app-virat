@@ -4,430 +4,714 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RAG Chatbot</title>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg-primary: #0a0a0f;
-      --bg-secondary: #12121a;
-      --bg-card: #1a1a24;
-      --border: #2a2a3a;
-      --text-primary: #e8e8ed;
-      --text-secondary: #8888a0;
+      --bg-primary: #0f0f14;
+      --bg-secondary: #1a1a22;
+      --bg-chat: #15151c;
+      --bg-user: #6366f1;
+      --bg-assistant: #252530;
+      --border: #2d2d3a;
+      --text-primary: #f0f0f5;
+      --text-secondary: #9898a8;
+      --text-muted: #6b6b7a;
       --accent: #6366f1;
-      --accent-hover: #818cf8;
+      --accent-hover: #7c7ff2;
       --success: #22c55e;
-      --error: #ef4444;
+      --error: #f43f5e;
+      --warning: #f59e0b;
     }
 
     body {
-      font-family: 'Outfit', sans-serif;
+      font-family: 'Inter', -apple-system, sans-serif;
       background: var(--bg-primary);
       color: var(--text-primary);
-      min-height: 100vh;
-      background-image: 
-        radial-gradient(ellipse at top, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
-        radial-gradient(ellipse at bottom right, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
+      height: 100vh;
+      overflow: hidden;
     }
 
-    .container {
-      max-width: 900px;
+    .app {
+      display: flex;
+      height: 100vh;
+      max-width: 1400px;
       margin: 0 auto;
-      padding: 60px 24px;
     }
 
-    header {
-      text-align: center;
-      margin-bottom: 60px;
+    /* Sidebar - Training Panel */
+    .sidebar {
+      width: 320px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      gap: 20px;
     }
 
-    h1 {
-      font-size: 2.5rem;
-      font-weight: 700;
-      margin-bottom: 12px;
-      background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .subtitle {
-      color: var(--text-secondary);
-      font-size: 1.1rem;
-    }
-
-    .card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 32px;
-      margin-bottom: 24px;
-      transition: border-color 0.2s ease;
-    }
-
-    .card:hover {
-      border-color: #3a3a4a;
-    }
-
-    .card-header {
+    .sidebar-header {
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
     }
 
-    .card-icon {
+    .logo {
       width: 40px;
       height: 40px;
-      background: var(--bg-secondary);
+      background: linear-gradient(135deg, var(--accent), #8b5cf6);
       border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.2rem;
+      font-size: 20px;
     }
 
-    .card-title {
-      font-size: 1.25rem;
-      font-weight: 600;
-    }
-
-    .card-description {
-      color: var(--text-secondary);
-      font-size: 0.9rem;
+    .sidebar-title { font-size: 18px; font-weight: 600; }
+    .session-badge {
+      font-size: 11px;
+      color: var(--text-muted);
+      background: var(--bg-primary);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-family: monospace;
       margin-top: 4px;
     }
 
-    .input-group {
-      display: flex;
-      gap: 12px;
-    }
-
-    input[type="text"] {
-      flex: 1;
-      background: var(--bg-secondary);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 14px 18px;
-      font-size: 1rem;
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--text-primary);
-      outline: none;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    input[type="text"]::placeholder {
+    .section { margin-bottom: 8px; }
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
       color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
     }
 
-    input[type="text"]:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-    }
+    .input-group { display: flex; flex-direction: column; gap: 10px; }
 
-    button {
+    input[type="text"], input[type="url"] {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: var(--text-primary);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: var(--accent); }
+    input::placeholder { color: var(--text-muted); }
+
+    .btn {
       background: var(--accent);
       color: white;
       border: none;
-      border-radius: 10px;
-      padding: 14px 28px;
-      font-size: 1rem;
-      font-family: 'Outfit', sans-serif;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: background 0.2s ease, transform 0.1s ease;
-      white-space: nowrap;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-secondary {
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--border); }
+    .btn-warning {
+      background: var(--warning);
+      color: #000;
+    }
+    .btn-warning:hover { background: #d97706; }
+    .btn-danger {
+      background: var(--error);
+    }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-sm {
+      padding: 8px 12px;
+      font-size: 12px;
+    }
+    .btn-group {
+      display: flex;
+      gap: 8px;
     }
 
-    button:hover {
-      background: var(--accent-hover);
+    .file-input-wrapper {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
-
-    button:active {
-      transform: scale(0.98);
+    .file-input {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
     }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
+    .file-label {
+      background: var(--bg-primary);
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
     }
+    .file-label:hover { border-color: var(--accent); color: var(--text-primary); }
+    .file-label.has-file { border-color: var(--success); color: var(--success); }
 
-    .status {
-      margin-top: 16px;
-      padding: 14px 18px;
-      border-radius: 10px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.9rem;
+    .status-message {
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 13px;
       display: none;
-      animation: fadeIn 0.3s ease;
+      animation: fadeIn 0.2s ease;
+    }
+    .status-message.show { display: block; }
+    .status-message.success { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+    .status-message.error { background: rgba(244, 63, 94, 0.15); color: var(--error); }
+    .status-message.loading { background: rgba(99, 102, 241, 0.15); color: var(--accent); }
+
+    /* Main Chat Area */
+    .chat-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-chat);
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-8px); }
-      to { opacity: 1; transform: translateY(0); }
+    .chat-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
+    .chat-header h2 { font-size: 16px; font-weight: 600; }
+    .chat-header .hint { font-size: 13px; color: var(--text-muted); }
 
-    .status.success {
-      display: block;
-      background: rgba(34, 197, 94, 0.1);
-      border: 1px solid rgba(34, 197, 94, 0.3);
-      color: var(--success);
-    }
-
-    .status.error {
-      display: block;
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: var(--error);
-    }
-
-    .status.loading {
-      display: block;
-      background: rgba(99, 102, 241, 0.1);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      color: var(--accent);
-    }
-
-    .chat-container {
-      margin-top: 20px;
-      max-height: 400px;
+    .messages {
+      flex: 1;
       overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
     .message {
-      padding: 16px 20px;
-      border-radius: 12px;
-      margin-bottom: 12px;
-      animation: fadeIn 0.3s ease;
+      max-width: 75%;
+      padding: 14px 18px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.6;
+      animation: slideIn 0.2s ease;
+    }
+    .message.user {
+      align-self: flex-end;
+      background: var(--bg-user);
+      border-bottom-right-radius: 4px;
+    }
+    .message.assistant {
+      align-self: flex-start;
+      background: var(--bg-assistant);
+      border-bottom-left-radius: 4px;
+    }
+    .message.system {
+      align-self: center;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      padding: 8px 16px;
     }
 
-    .message.question {
+    .typing-indicator {
+      display: flex;
+      gap: 4px;
+      padding: 14px 18px;
+      background: var(--bg-assistant);
+      border-radius: 16px;
+      border-bottom-left-radius: 4px;
+      width: fit-content;
+    }
+    .typing-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--text-muted);
+      border-radius: 50%;
+      animation: bounce 1.4s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    .chat-input-area {
+      padding: 16px 24px 24px;
+      border-top: 1px solid var(--border);
+    }
+    .chat-input-wrapper {
+      display: flex;
+      gap: 12px;
       background: var(--bg-secondary);
       border: 1px solid var(--border);
-      margin-left: 40px;
+      border-radius: 12px;
+      padding: 8px;
     }
-
-    .message.answer {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      margin-right: 40px;
+    .chat-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      padding: 10px 12px;
+      color: var(--text-primary);
+      font-size: 14px;
+      outline: none;
+      resize: none;
+      font-family: inherit;
     }
-
-    .message-label {
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 8px;
-      color: var(--text-secondary);
+    .chat-input::placeholder { color: var(--text-muted); }
+    .send-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      width: 44px;
+      height: 44px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
     }
+    .send-btn:hover { background: var(--accent-hover); }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .send-btn svg { width: 20px; height: 20px; fill: white; }
 
-    .message.answer .message-label {
-      color: var(--accent);
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 40px;
     }
+    .empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-state h3 { color: var(--text-secondary); margin-bottom: 8px; }
 
-    .message-content {
-      line-height: 1.6;
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-6px); }
     }
-
+    @keyframes spin { to { transform: rotate(360deg); } }
     .spinner {
-      display: inline-block;
       width: 16px;
       height: 16px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
+      border: 2px solid rgba(255,255,255,0.3);
       border-top-color: white;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
-      margin-right: 8px;
-      vertical-align: middle;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .divider {
-      height: 1px;
-      background: var(--border);
-      margin: 40px 0;
-    }
-
-    footer {
-      text-align: center;
-      color: var(--text-secondary);
-      font-size: 0.85rem;
-      margin-top: 40px;
-    }
-
-    footer a {
-      color: var(--accent);
-      text-decoration: none;
-    }
-
-    footer a:hover {
-      text-decoration: underline;
+    /* Responsive */
+    @media (max-width: 768px) {
+      .app { flex-direction: column; }
+      .sidebar { width: 100%; max-height: 40vh; overflow-y: auto; }
+      .message { max-width: 90%; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>RAG Chatbot</h1>
-      <p class="subtitle">Crawl any website and chat with its content</p>
-    </header>
-
-    <!-- Crawl Section -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-icon">🕷️</div>
+  <div class="app">
+    <!-- Sidebar - Training Panel -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">🤖</div>
         <div>
-          <div class="card-title">Crawl Website</div>
-          <div class="card-description">Enter a URL to crawl and index its content</div>
+          <div class="sidebar-title">RAG Chatbot</div>
+          <div class="session-badge" id="sessionBadge">Session: ---</div>
         </div>
       </div>
-      <div class="input-group">
-        <input type="text" id="urlInput" placeholder="https://en.wikipedia.org/wiki/..." />
-        <button id="crawlBtn" onclick="crawlWebsite()">Crawl</button>
-      </div>
-      <div id="crawlStatus" class="status"></div>
-    </div>
 
-    <div class="divider"></div>
-
-    <!-- Ask Section -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-icon">💬</div>
-        <div>
-          <div class="card-title">Ask Questions</div>
-          <div class="card-description">Ask anything about the crawled content</div>
+      <!-- Train from URL -->
+      <div class="section">
+        <div class="section-title">Train from Website</div>
+        <div class="input-group">
+          <input type="url" id="urlInput" placeholder="https://example.com/docs" />
+          <button class="btn" id="crawlBtn" onclick="trainFromUrl()">
+            <span>🌐</span> Train Website
+          </button>
+          <div class="status-message" id="urlStatus"></div>
         </div>
       </div>
-      <div class="input-group">
-        <input type="text" id="questionInput" placeholder="What would you like to know?" onkeypress="handleKeyPress(event)" />
-        <button id="askBtn" onclick="askQuestion()">Ask</button>
-      </div>
-      <div id="chatContainer" class="chat-container"></div>
-    </div>
 
-    <footer>
-      Built with FastAPI + LangChain · <a href="/docs" target="_blank">API Docs</a>
-    </footer>
+      <!-- Train from File -->
+      <div class="section">
+        <div class="section-title">Train from Document</div>
+        <div class="input-group">
+          <div class="file-input-wrapper">
+            <label class="file-label" id="fileLabel">
+              📄 Drop file or click to upload<br>
+              <small>PDF, TXT, DOCX</small>
+            </label>
+            <input type="file" class="file-input" id="fileInput" accept=".pdf,.txt,.docx" onchange="handleFileSelect(this)" />
+          </div>
+          <button class="btn btn-secondary" id="uploadBtn" onclick="trainFromFile()" disabled>
+            <span>📤</span> Train Document
+          </button>
+          <div class="status-message" id="fileStatus"></div>
+        </div>
+      </div>
+
+      <!-- Session Controls -->
+      <div class="section" style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border);">
+        <div class="section-title">Session Controls</div>
+        <div class="btn-group">
+          <button class="btn btn-warning btn-sm" onclick="resetConversation()" title="Clear chat history, keep knowledge">
+            🔁 Reset Chat
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="resetKnowledge()" title="Delete all trained knowledge">
+            🗑️ Reset All
+          </button>
+        </div>
+        <div class="status-message" id="resetStatus"></div>
+      </div>
+    </aside>
+
+    <!-- Main Chat Area -->
+    <main class="chat-main">
+      <div class="chat-header">
+        <h2>💬 Chat</h2>
+        <span class="hint">Ask questions about your trained content</span>
+      </div>
+
+      <div class="messages" id="messages">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-state-icon">💡</div>
+          <h3>Start a conversation</h3>
+          <p>Train the chatbot with a website or document,<br>then ask questions about the content.</p>
+        </div>
+      </div>
+
+      <div class="chat-input-area">
+        <div class="chat-input-wrapper">
+          <input type="text" class="chat-input" id="chatInput" placeholder="Ask a question..." onkeydown="handleChatKeydown(event)" />
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
+      </div>
+    </main>
   </div>
 
   <script>
-    const API_BASE = 'http://localhost:3000';
+    // Session ID - generated once per page load
+    const SESSION_ID = 'session_' + Math.random().toString(36).substring(2, 10);
+    
+    // Chat history in memory
+    let chatHistory = [];
+    let selectedFile = null;
+    let isTrainingComplete = false;
 
-    async function crawlWebsite() {
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('sessionBadge').textContent = `Session: ${SESSION_ID.slice(-8)}`;
+    });
+
+    // === Training Functions ===
+    
+    async function trainFromUrl() {
       const urlInput = document.getElementById('urlInput');
-      const crawlBtn = document.getElementById('crawlBtn');
-      const crawlStatus = document.getElementById('crawlStatus');
+      const btn = document.getElementById('crawlBtn');
+      const status = document.getElementById('urlStatus');
+      const url = urlInput.value.trim();
       
-      const baseUrl = urlInput.value.trim();
-      
-      if (!baseUrl) {
-        showStatus(crawlStatus, 'Please enter a URL', 'error');
+      if (!url) {
+        showStatus(status, 'Please enter a URL', 'error');
         return;
       }
 
-      crawlBtn.disabled = true;
-      crawlBtn.innerHTML = '<span class="spinner"></span>Crawling...';
-      showStatus(crawlStatus, 'Crawling website... This may take a minute.', 'loading');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Crawling...';
+      showStatus(status, 'Crawling website... This may take a minute.', 'loading');
 
       try {
-        const response = await fetch(`${API_BASE}/crawl`, {
+        const res = await fetch('/crawl', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ baseUrl })
+          body: JSON.stringify({ baseUrl: url, session_id: SESSION_ID })
         });
+        const data = await res.json();
 
-        const data = await response.json();
-
-        if (response.ok) {
-          showStatus(crawlStatus, `✓ Crawled ${data.pages_crawled} pages, created ${data.chunks_created} chunks`, 'success');
+        if (res.ok) {
+          showStatus(status, `✓ Trained on ${data.pages_crawled} pages (${data.chunks_created} chunks)`, 'success');
+          isTrainingComplete = true;
+          addSystemMessage('Website trained successfully! You can now ask questions.');
         } else {
-          showStatus(crawlStatus, `Error: ${data.detail || 'Crawl failed'}`, 'error');
+          showStatus(status, `Error: ${data.detail || 'Failed to crawl'}`, 'error');
         }
-      } catch (error) {
-        showStatus(crawlStatus, `Error: Could not connect to server`, 'error');
+      } catch (e) {
+        showStatus(status, 'Error: Could not connect to server', 'error');
       }
 
-      crawlBtn.disabled = false;
-      crawlBtn.textContent = 'Crawl';
+      btn.disabled = false;
+      btn.innerHTML = '<span>🌐</span> Train Website';
     }
 
-    async function askQuestion() {
-      const questionInput = document.getElementById('questionInput');
-      const askBtn = document.getElementById('askBtn');
-      const chatContainer = document.getElementById('chatContainer');
+    function handleFileSelect(input) {
+      const fileLabel = document.getElementById('fileLabel');
+      const uploadBtn = document.getElementById('uploadBtn');
       
-      const question = questionInput.value.trim();
+      if (input.files && input.files[0]) {
+        selectedFile = input.files[0];
+        fileLabel.textContent = `📄 ${selectedFile.name}`;
+        fileLabel.classList.add('has-file');
+        uploadBtn.disabled = false;
+      } else {
+        selectedFile = null;
+        fileLabel.innerHTML = '📄 Drop file or click to upload<br><small>PDF, TXT, DOCX</small>';
+        fileLabel.classList.remove('has-file');
+        uploadBtn.disabled = true;
+      }
+    }
+
+    async function trainFromFile() {
+      if (!selectedFile) return;
+
+      const btn = document.getElementById('uploadBtn');
+      const status = document.getElementById('fileStatus');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Processing...';
+      showStatus(status, 'Processing document...', 'loading');
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('session_id', SESSION_ID);
+
+      try {
+        const res = await fetch('/ingest/file', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showStatus(status, `✓ Trained on ${selectedFile.name} (${data.chunks_created} chunks)`, 'success');
+          isTrainingComplete = true;
+          addSystemMessage('Document trained successfully! You can now ask questions.');
+        } else {
+          showStatus(status, `Error: ${data.detail || 'Failed to process file'}`, 'error');
+        }
+      } catch (e) {
+        showStatus(status, 'Error: Could not connect to server', 'error');
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '<span>📤</span> Train Document';
+    }
+
+    // === Chat Functions ===
+
+    function handleChatKeydown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const sendBtn = document.getElementById('sendBtn');
+      const question = input.value.trim();
       
       if (!question) return;
 
-      // Add question to chat
-      addMessage(question, 'question');
-      questionInput.value = '';
+      // Hide empty state
+      document.getElementById('emptyState').style.display = 'none';
 
-      askBtn.disabled = true;
-      askBtn.innerHTML = '<span class="spinner"></span>';
+      // Add user message
+      addMessage(question, 'user');
+      chatHistory.push({ role: 'user', content: question });
+      input.value = '';
+
+      // Show typing indicator
+      sendBtn.disabled = true;
+      const typingId = showTypingIndicator();
 
       try {
-        const response = await fetch(`${API_BASE}/ask`, {
+        const res = await fetch('/ask', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question })
+          body: JSON.stringify({ question, session_id: SESSION_ID })
         });
+        const data = await res.json();
 
-        const data = await response.json();
+        removeTypingIndicator(typingId);
 
-        if (response.ok) {
-          addMessage(data.answer, 'answer');
+        if (res.ok) {
+          addMessage(data.answer, 'assistant');
+          chatHistory.push({ role: 'assistant', content: data.answer });
         } else {
-          addMessage(`Error: ${data.detail || 'Failed to get answer'}`, 'answer');
+          addMessage(`Error: ${data.detail || 'Failed to get answer'}`, 'assistant');
         }
-      } catch (error) {
-        addMessage('Error: Could not connect to server', 'answer');
+      } catch (e) {
+        removeTypingIndicator(typingId);
+        addMessage('Error: Could not connect to server', 'assistant');
       }
 
-      askBtn.disabled = false;
-      askBtn.textContent = 'Ask';
+      sendBtn.disabled = false;
+      input.focus();
     }
 
-    function addMessage(text, type) {
-      const chatContainer = document.getElementById('chatContainer');
-      const message = document.createElement('div');
-      message.className = `message ${type}`;
-      message.innerHTML = `
-        <div class="message-label">${type === 'question' ? 'You' : 'Assistant'}</div>
-        <div class="message-content">${escapeHtml(text)}</div>
-      `;
-      chatContainer.appendChild(message);
-      chatContainer.scrollTop = chatContainer.scrollHeight;
+    // === UI Helpers ===
+
+    function addMessage(text, role) {
+      const container = document.getElementById('messages');
+      const msg = document.createElement('div');
+      msg.className = `message ${role}`;
+      msg.textContent = text;
+      container.appendChild(msg);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function addSystemMessage(text) {
+      const container = document.getElementById('messages');
+      document.getElementById('emptyState').style.display = 'none';
+      const msg = document.createElement('div');
+      msg.className = 'message system';
+      msg.textContent = text;
+      container.appendChild(msg);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function showTypingIndicator() {
+      const container = document.getElementById('messages');
+      const id = 'typing-' + Date.now();
+      const indicator = document.createElement('div');
+      indicator.id = id;
+      indicator.className = 'typing-indicator';
+      indicator.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+      container.appendChild(indicator);
+      container.scrollTop = container.scrollHeight;
+      return id;
+    }
+
+    function removeTypingIndicator(id) {
+      const indicator = document.getElementById(id);
+      if (indicator) indicator.remove();
     }
 
     function showStatus(element, message, type) {
       element.textContent = message;
-      element.className = `status ${type}`;
+      element.className = `status-message show ${type}`;
     }
 
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+    // === Reset Functions ===
+
+    async function resetConversation() {
+      if (!confirm('Clear conversation history? Your trained knowledge will be preserved.')) {
+        return;
+      }
+
+      const status = document.getElementById('resetStatus');
+      showStatus(status, 'Clearing conversation...', 'loading');
+
+      try {
+        const res = await fetch('/reset/conversation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: SESSION_ID })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          // Clear local chat UI
+          chatHistory = [];
+          const messagesContainer = document.getElementById('messages');
+          messagesContainer.innerHTML = `
+            <div class="empty-state" id="emptyState">
+              <div class="empty-state-icon">💡</div>
+              <h3>Conversation cleared</h3>
+              <p>Your trained knowledge is preserved.<br>Start asking new questions!</p>
+            </div>
+          `;
+          showStatus(status, '✓ Conversation cleared', 'success');
+          setTimeout(() => { status.className = 'status-message'; }, 3000);
+        } else {
+          showStatus(status, `Error: ${data.detail || 'Failed to reset'}`, 'error');
+        }
+      } catch (e) {
+        showStatus(status, 'Error: Could not connect to server', 'error');
+      }
     }
 
-    function handleKeyPress(event) {
-      if (event.key === 'Enter') {
-        askQuestion();
+    async function resetKnowledge() {
+      if (!confirm('⚠️ Delete ALL trained knowledge and conversation?\n\nThis cannot be undone. You will need to train the chatbot again.')) {
+        return;
+      }
+
+      const status = document.getElementById('resetStatus');
+      showStatus(status, 'Deleting knowledge...', 'loading');
+
+      try {
+        const res = await fetch('/reset/knowledge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: SESSION_ID })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          // Reset all UI state
+          chatHistory = [];
+          isTrainingComplete = false;
+          selectedFile = null;
+          
+          // Reset file input
+          document.getElementById('fileInput').value = '';
+          document.getElementById('fileLabel').innerHTML = '📄 Drop file or click to upload<br><small>PDF, TXT, DOCX</small>';
+          document.getElementById('fileLabel').classList.remove('has-file');
+          document.getElementById('uploadBtn').disabled = true;
+          
+          // Reset URL input
+          document.getElementById('urlInput').value = '';
+          
+          // Clear status messages
+          document.getElementById('urlStatus').className = 'status-message';
+          document.getElementById('fileStatus').className = 'status-message';
+          
+          // Reset chat
+          document.getElementById('messages').innerHTML = `
+            <div class="empty-state" id="emptyState">
+              <div class="empty-state-icon">💡</div>
+              <h3>Start a conversation</h3>
+              <p>Train the chatbot with a website or document,<br>then ask questions about the content.</p>
+            </div>
+          `;
+          
+          showStatus(status, '✓ All knowledge deleted', 'success');
+          setTimeout(() => { status.className = 'status-message'; }, 3000);
+        } else {
+          showStatus(status, `Error: ${data.detail || 'Failed to reset'}`, 'error');
+        }
+      } catch (e) {
+        showStatus(status, 'Error: Could not connect to server', 'error');
       }
     }
   </script>
 </body>
 </html>
-
