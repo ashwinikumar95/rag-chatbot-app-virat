@@ -6,14 +6,22 @@ from collections import deque
 from typing import List, Dict, Optional
 import logging
 
+# Import centralized config
+from config import (
+    MAX_CRAWL_DEPTH,
+    MAX_PAGES_PER_CRAWL,
+    CRAWL_TIMEOUT_SECONDS,
+    MIN_PAGE_CONTENT_LENGTH,
+)
+
 # Get logger
 logger = logging.getLogger("rag.crawler")
 
-# Configuration
-MAX_DEPTH = 2
-MAX_PAGES = 20
-REQUEST_TIMEOUT = 15
-MIN_CONTENT_LENGTH = 100  # Minimum characters for valid content
+# Use config values
+MAX_DEPTH = MAX_CRAWL_DEPTH
+MAX_PAGES = MAX_PAGES_PER_CRAWL
+REQUEST_TIMEOUT = CRAWL_TIMEOUT_SECONDS
+MIN_CONTENT_LENGTH = MIN_PAGE_CONTENT_LENGTH
 
 SKIP_KEYWORDS = ["login", "signup", "register", "cart", "checkout", "privacy", "terms", "cookie"]
 
